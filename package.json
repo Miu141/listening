@@ -12,12 +12,15 @@
     "start": "concurrently \"npm run dev\" \"npm run server\""
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.0.14",
+    "@types/howler": "^2.2.12",
     "@types/node": "^22.13.10",
     "autoprefixer": "^10.4.21",
     "axios": "^1.8.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "howler": "^2.2.4",
     "openai": "^5.0.0-beta.0",
     "postcss": "^8.5.3",
     "react": "^18.2.0",
