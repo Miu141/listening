@@ -400,7 +400,7 @@ const ResultPage = () => {
           <h2 className="font-bold text-lg mb-3">問題と解説</h2>
           <div className="space-y-8">
             {audioData.questions.map((question, index) => {
-              const isCorrect =
+              const _isCorrect =
                 selectedAnswers[index] === question.correctAnswer;
               return (
                 <div
