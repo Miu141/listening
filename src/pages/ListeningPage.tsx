@@ -67,13 +67,10 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
   const [duration, setDuration] = useState(0);
   const [audioData, setAudioData] = useState<AudioData | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
-  const [showResults, setShowResults] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const howlRef = useRef<Howl | null>(null);
   const requestRef = useRef<number | null>(null);
   const navigate = useNavigate();
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // ローカルストレージから問題データを読み込む
@@ -141,7 +138,6 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
   const fetchLatestQuestion = async () => {
     try {
       setLoadingState("loading");
-      setStatus("サーバーから問題データを取得中...");
       setError(null); // エラーをクリア
 
       // 最後に選択されたレベル、目標、トピックを取得
@@ -156,30 +152,6 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
         topic,
       });
 
-      setStatus(
-        `レベル「${level}」、目的「${goal}」、トピック「${topic}」で問題を取得中...`
-      );
-
-      // ローカルストレージから既存の音声URLを取得
-      let existingAudioUrl = null;
-      let existingText = null;
-      try {
-        const storedData = localStorage.getItem("generatedQuestion");
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          if (parsedData && parsedData.audioUrl) {
-            existingAudioUrl = parsedData.audioUrl;
-            console.log("既存の音声URLをサーバーに送信:", existingAudioUrl);
-          }
-          if (parsedData && parsedData.text) {
-            existingText = parsedData.text;
-            console.log("既存の問題テキストをサーバーに送信:", existingText);
-          }
-        }
-      } catch (e) {
-        console.error("ローカルストレージからの音声URL取得エラー:", e);
-      }
-
       const response = await axios.post(
         `${window.location.protocol}//${window.location.hostname}:3000/api/questions/generate`,
         {
@@ -187,8 +159,6 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
           goal,
           topic,
           skipAudioGeneration: false, // 常に新しい音声を生成する
-          existingAudioUrl: existingAudioUrl, // 不要だが後方互換性のため残しておく
-          existingText: existingText, // 不要だが後方互換性のため残しておく
         }
       );
 
@@ -220,8 +190,6 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
       setError(
         "問題データの取得に失敗しました。問題生成ページからやり直してください。"
       );
-    } finally {
-      setStatus("");
     }
   };
 
@@ -269,13 +237,13 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
                 }
               }, 500);
             },
-            onloaderror: ((id, error) => {
+            onloaderror: ((_id, error) => {
               console.error("音声ファイルの読み込みエラー:", error);
               setLoadingState("error");
               // フォールバック: 音声なしで問題を表示
               setShowQuestions(true);
             }) as HowlErrorCallback,
-            onplayerror: ((id, error) => {
+            onplayerror: ((_id, error) => {
               console.error("音声再生エラー:", error);
               // 音声の再生に失敗した場合でも問題を表示
               setShowQuestions(true);
@@ -401,18 +369,9 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
       localStorage.setItem("totalCount", audioData.questions.length.toString());
       localStorage.setItem("selectedAnswers", JSON.stringify(selectedAnswers));
 
-      // 結果表示フラグを設定して結果を表示
-      setShowResults(true);
-
       // 直接結果ページへ遷移
       navigate("/result");
     }
-  };
-
-  // 完了して結果ページへ（現在は使用されていないが、念のため残しておく）
-  const handleFinish = () => {
-    // すでに採点情報は保存されているため、遷移のみ行う
-    navigate("/result");
   };
 
   if (error) {
