@@ -3,6 +3,11 @@ import { useEffect, useState, useRef } from "react";
 import { Howl } from "howler";
 import axios from "axios";
 
+// 環境変数からAPIサーバーURLを取得またはデフォルト値を使用
+const API_SERVER_URL =
+  import.meta.env.VITE_API_SERVER_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3000`;
+
 // 型定義
 interface Question {
   question: string;
@@ -237,7 +242,7 @@ const ResultPage = () => {
     try {
       setIsTranslating(true);
       const response = await axios.post(
-        `${window.location.protocol}//${window.location.hostname}:3000/api/transcript/translate`,
+        `${API_SERVER_URL}/api/transcript/translate`,
         {
           text,
         }

@@ -20,6 +20,11 @@ interface ListeningPageProps {
   audioData?: AudioData;
 }
 
+// 環境変数からAPIサーバーURLを取得またはデフォルト値を使用
+const API_SERVER_URL =
+  import.meta.env.VITE_API_SERVER_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3000`;
+
 // テキスト読み上げによるオーディオ生成
 const generateSpeech = (audioUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -152,8 +157,10 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
         topic,
       });
 
+      console.log(`API Server URL: ${API_SERVER_URL}`);
+
       const response = await axios.post(
-        `${window.location.protocol}//${window.location.hostname}:3000/api/questions/generate`,
+        `${API_SERVER_URL}/api/questions/generate`,
         {
           level,
           goal,

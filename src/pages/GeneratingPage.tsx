@@ -3,7 +3,22 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:3000`;
+// 環境変数からAPIサーバーURLを取得またはデフォルト値を使用
+const API_SERVER_URL =
+  import.meta.env.VITE_API_SERVER_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3000`;
+
+// 環境変数の値をコンソールに出力
+console.log("環境変数:", {
+  VITE_API_SERVER_URL: import.meta.env.VITE_API_SERVER_URL,
+  API_SERVER_URL,
+  NODE_ENV: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD,
+});
+
+// ソケットURLも同じ環境変数を使用
+const SOCKET_URL = API_SERVER_URL;
 
 // 進捗状態の型定義
 type ProgressStage = {
@@ -141,6 +156,7 @@ const GeneratingPage = () => {
     });
 
     addDebugLog(`WebSocket接続: ${SOCKET_URL}`);
+    addDebugLog(`API Server URL: ${API_SERVER_URL}`);
 
     return () => {
       // クリーンアップ
@@ -150,6 +166,25 @@ const GeneratingPage = () => {
       }
     };
   }, [addDebugLog]);
+
+  // 無限ループを避けるため、プログレス値を手動で更新するヘルパー関数を追加
+  const manuallyUpdateProgress = () => {
+    let currentProgress = 0;
+    const progressSteps = [5, 15, 30, 50, 70, 90, 100];
+    const progressInterval = setInterval(() => {
+      const nextProgress = progressSteps.find((p) => p > currentProgress);
+      if (nextProgress) {
+        currentProgress = nextProgress;
+        setProgress(currentProgress);
+        // 100%に達したらタイマーをクリア
+        if (currentProgress === 100) {
+          clearInterval(progressInterval);
+        }
+      }
+    }, 2000); // 2秒ごとに進捗更新
+
+    return progressInterval;
+  };
 
   useEffect(() => {
     let isSubscribed = true;
@@ -163,6 +198,9 @@ const GeneratingPage = () => {
       isGeneratingRef.current = true;
       questionDataSavedRef.current = false;
 
+      // プログレスバーの手動更新を開始
+      const progressInterval = manuallyUpdateProgress();
+
       try {
         // 前回の問題データを明示的にクリアする
         localStorage.removeItem("generatedQuestion");
@@ -172,7 +210,10 @@ const GeneratingPage = () => {
         const goal = localStorage.getItem("selectedGoal");
         const topic = localStorage.getItem("selectedTopic");
 
-        if (!isSubscribed) return;
+        if (!isSubscribed) {
+          clearInterval(progressInterval);
+          return;
+        }
 
         addDebugLog(
           `選択された情報: level=${level}, goal=${goal}, topic=${topic}`
@@ -183,19 +224,24 @@ const GeneratingPage = () => {
         }
 
         addDebugLog("APIリクエスト開始");
+        addDebugLog(`API Server URL: ${API_SERVER_URL}`);
 
         // 実際の問題生成APIの呼び出し
+        console.log("API呼び出し前:", {
+          url: `${API_SERVER_URL}/api/questions/generate`,
+          data: { level, goal, topic, skipAudioGeneration: false },
+        });
+
         const response = await axios
-          .post(
-            `${window.location.protocol}//${window.location.hostname}:3000/api/questions/generate`,
-            {
-              level,
-              goal,
-              topic,
-              skipAudioGeneration: false,
-            }
-          )
+          .post(`${API_SERVER_URL}/api/questions/generate`, {
+            level,
+            goal,
+            topic,
+            skipAudioGeneration: false,
+          })
           .catch((error) => {
+            console.error("API呼び出しエラー:", error);
+            addDebugLog(`API呼び出し時の例外: ${error.toString()}`);
             if (error.response) {
               addDebugLog(
                 `APIエラー: ${error.response.status} - ${JSON.stringify(
@@ -216,7 +262,15 @@ const GeneratingPage = () => {
             }
           });
 
-        if (!isSubscribed) return;
+        if (!isSubscribed) {
+          clearInterval(progressInterval);
+          return;
+        }
+
+        // 手動進捗更新を停止
+        clearInterval(progressInterval);
+        // 進捗を100%に設定
+        setProgress(100);
 
         addDebugLog(`APIレスポンス受信: ${JSON.stringify(response.data)}`);
 
@@ -266,7 +320,13 @@ const GeneratingPage = () => {
           window.location.href = "/listening";
         }
       } catch (error: any) {
-        if (!isSubscribed) return;
+        if (!isSubscribed) {
+          clearInterval(progressInterval);
+          return;
+        }
+
+        // エラー発生時も手動進捗更新を停止
+        clearInterval(progressInterval);
 
         console.error("問題生成エラー:", error);
         addDebugLog(`エラー発生: ${error.message}`);
@@ -294,7 +354,7 @@ const GeneratingPage = () => {
     return () => {
       isSubscribed = false;
     };
-  }, [addDebugLog, progress]);
+  }, [addDebugLog]);
 
   const handleBack = useCallback(() => {
     setError(null);

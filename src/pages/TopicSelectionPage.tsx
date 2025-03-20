@@ -305,11 +305,14 @@ const generateRandomTopics = (
   return result;
 };
 
+// 環境変数からAPIサーバーURLを取得またはデフォルト値を使用
+const API_SERVER_URL =
+  import.meta.env.VITE_API_SERVER_URL ||
+  `${window.location.protocol}//${window.location.hostname}:3000`;
+
 // APIの基本URL
 const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "/api"
-    : `${window.location.protocol}//${window.location.hostname}:3000/api`;
+  process.env.NODE_ENV === "production" ? "/api" : `${API_SERVER_URL}/api`;
 
 // ランダムなカテゴリを取得する関数
 const getRandomCategory = (): string => {
