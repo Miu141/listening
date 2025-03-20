@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Howl, HowlErrorCallback } from "howler";
 import axios from "axios";
-import { io } from "socket.io-client";
 
 interface Question {
   question: string;
@@ -39,7 +38,7 @@ const generateSpeech = (audioUrl: string): Promise<string> => {
 
     // 開発環境での絶対パス構築
     if (audioUrl.startsWith("/audio/")) {
-      fullAudioUrl = `http://localhost:3000${audioUrl}`;
+      fullAudioUrl = `${window.location.protocol}//${window.location.hostname}:3000${audioUrl}`;
     }
 
     // sample.mp3を使用しないように確認
@@ -182,7 +181,7 @@ const ListeningPage: React.FC<ListeningPageProps> = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:3000/api/questions/generate",
+        `${window.location.protocol}//${window.location.hostname}:3000/api/questions/generate`,
         {
           level,
           goal,

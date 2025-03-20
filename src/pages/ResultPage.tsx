@@ -126,7 +126,7 @@ const ResultPage = () => {
 
     // 開発環境での絶対パス構築
     if (audioUrl.startsWith("/audio/")) {
-      fullAudioUrl = `http://localhost:3000${audioUrl}`;
+      fullAudioUrl = `${window.location.protocol}//${window.location.hostname}:3000${audioUrl}`;
     }
 
     // Howlインスタンスの作成
@@ -237,7 +237,7 @@ const ResultPage = () => {
     try {
       setIsTranslating(true);
       const response = await axios.post(
-        "http://localhost:3000/api/transcript/translate",
+        `${window.location.protocol}//${window.location.hostname}:3000/api/transcript/translate`,
         {
           text,
         }

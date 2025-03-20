@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://localhost:3000";
+const SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:3000`;
 
 // 進捗状態の型定義
 type ProgressStage = {
@@ -38,7 +38,7 @@ const PROGRESS_STAGES: ProgressStage[] = [
 const GeneratingPage = () => {
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState("準備中...");
+  const [, setStatus] = useState("準備中...");
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
@@ -186,12 +186,15 @@ const GeneratingPage = () => {
 
         // 実際の問題生成APIの呼び出し
         const response = await axios
-          .post("http://localhost:3000/api/questions/generate", {
-            level,
-            goal,
-            topic,
-            skipAudioGeneration: false,
-          })
+          .post(
+            `${window.location.protocol}//${window.location.hostname}:3000/api/questions/generate`,
+            {
+              level,
+              goal,
+              topic,
+              skipAudioGeneration: false,
+            }
+          )
           .catch((error) => {
             if (error.response) {
               addDebugLog(
