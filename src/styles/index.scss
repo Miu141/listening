@@ -1,43 +1,64 @@
-@import "tailwindcss";
+@use "tailwindcss" as tw;
 
 @theme {
-  --color-primary: #7C3AED;
-  --color-primary-light: #8B5CF6;
-  --color-primary-dark: #6D28D9;
-  --color-secondary: #F3F4F6;
+  --color-primary: #7c3aed;
+  --color-primary-light: #8b5cf6;
+  --color-primary-dark: #6d28d9;
+  --color-secondary: #f3f4f6;
 }
 
 /* 古いクラス名と新しいCSS変数をマッピング */
-.bg-primary { background-color: var(--color-primary); }
-.bg-primary-light { background-color: var(--color-primary-light); }
-.bg-primary-dark { background-color: var(--color-primary-dark); }
-.bg-secondary { background-color: var(--color-secondary); }
-.text-primary { color: var(--color-primary); }
-.border-primary { border-color: var(--color-primary); }
-.ring-primary { --tw-ring-color: var(--color-primary); }
-.hover\:bg-primary-dark:hover { background-color: var(--color-primary-dark); }
+.bg-primary {
+  background-color: var(--color-primary);
+}
+.bg-primary-light {
+  background-color: var(--color-primary-light);
+}
+.bg-primary-dark {
+  background-color: var(--color-primary-dark);
+}
+.bg-secondary {
+  background-color: var(--color-secondary);
+}
+.text-primary {
+  color: var(--color-primary);
+}
+.border-primary {
+  border-color: var(--color-primary);
+}
+.ring-primary {
+  --tw-ring-color: var(--color-primary);
+}
+.hover\:bg-primary-dark:hover {
+  background-color: var(--color-primary-dark);
+}
 
 @layer base {
   body {
-    @apply bg-gray-100 text-gray-800 font-sans;
+    @apply bg-white text-gray-800 font-sans;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold;
   }
-  
+
   h1 {
     @apply text-2xl md:text-3xl lg:text-4xl;
   }
-  
+
   h2 {
     @apply text-xl md:text-2xl lg:text-3xl;
   }
-  
+
   h3 {
     @apply text-lg md:text-xl lg:text-2xl;
   }
-  
+
   button {
     @apply transition-all duration-200;
   }
@@ -47,20 +68,20 @@
   .btn {
     @apply px-4 py-2 rounded font-medium transition-all duration-200;
   }
-  
+
   .btn-primary {
     @apply bg-primary text-white hover:bg-primary-dark;
   }
-  
+
   .btn-secondary {
     @apply bg-secondary text-gray-800 hover:bg-gray-300;
   }
-  
+
   .card {
     @apply bg-white rounded-lg shadow-md p-5;
   }
-  
+
   .input {
     @apply border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
   }
-} 
+}

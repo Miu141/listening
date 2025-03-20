@@ -1,34 +1,94 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import { OpenAI } from 'openai'
-import { transcriptRoute } from './routes/transcript'
-import { feedbackRoute } from './routes/feedback'
+import { Server } from 'socket.io'
+import http from 'http'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import questionsRouter from './routes/questions'
+import transcriptRouter from './routes/transcript'
+import conversationsRouter from './routes/conversations'
 
 dotenv.config()
 
-const app = express()
-const PORT = process.env.PORT || 3001
+// ESモジュールで__dirnameを再現する
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-// OpenAI設定
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const app = express()
+const server = http.createServer(app)
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
 })
+const port = process.env.PORT || 3000
 
 // ミドルウェア
 app.use(cors())
 app.use(express.json())
 
-// APIルート
-app.use('/api/transcript', transcriptRoute)
-app.use('/api/feedback', feedbackRoute)
+// 静的ファイルの配信
+const publicPath = path.join(__dirname, '../public')
+console.log('Static files path:', publicPath)
 
-// 簡単なヘルスチェック
+// オーディオファイルへのアクセスをより詳細にログ出力
+app.use('/audio', (req, res, next) => {
+  console.log(`Audio file requested: ${req.path}`);
+  // CORSヘッダーを明示的に設定
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+}, express.static(path.join(publicPath, 'audio'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.mp3')) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      console.log(`Setting Content-Type to audio/mpeg for ${path}`);
+    }
+  }
+}));
+
+// ソケット接続を追跡
+io.on('connection', (socket) => {
+  console.log('クライアント接続: ', socket.id)
+  
+  socket.on('disconnect', () => {
+    console.log('クライアント切断: ', socket.id)
+  })
+})
+
+// リクエストオブジェクトにioを追加するミドルウェア
+app.use((req, res, next) => {
+  req.io = io
+  next()
+})
+
+// 型定義の拡張
+declare global {
+  namespace Express {
+    interface Request {
+      io: Server
+    }
+  }
+}
+
+// ヘルスチェック
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'サーバーは正常に動作しています' })
 })
 
+// 問題生成ルーターをマウント
+app.use('/api/questions', questionsRouter)
+
+// 翻訳ルーターをマウント
+app.use('/api/transcript', transcriptRouter)
+
+// 会話サンプル生成ルーターをマウント
+app.use('/api/conversations', conversationsRouter)
+
 // サーバー起動
-app.listen(PORT, () => {
-  console.log(`サーバーが起動しました: http://localhost:${PORT}`)
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`)
 }) 
