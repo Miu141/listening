@@ -31,7 +31,9 @@ app.use(express.json())
 
 // 静的ファイルの配信
 const publicPath = path.join(__dirname, '../public')
+const distPath = path.join(__dirname, '../dist')
 console.log('Static files path:', publicPath)
+console.log('Dist files path:', distPath)
 
 // オーディオファイルへのアクセスをより詳細にログ出力
 app.use('/audio', (req, res, next) => {
@@ -87,6 +89,14 @@ app.use('/api/transcript', transcriptRouter)
 
 // 会話サンプル生成ルーターをマウント
 app.use('/api/conversations', conversationsRouter)
+
+// フロントエンドの静的ファイルを配信
+app.use(express.static(distPath))
+
+// その他のルートはすべてindex.htmlにリダイレクト（SPA向け）
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'))
+})
 
 // サーバー起動
 server.listen(port, () => {
