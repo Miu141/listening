@@ -37,7 +37,7 @@ interface Question {
 interface GenerateSpeechFileFunction {
   (text: string): Promise<string>;
   isGenerating: boolean;
-  lastGeneratedPath: string | null;
+  lastGeneratedPath: string;
 }
 
 // 音声を生成する関数
@@ -46,117 +46,59 @@ const generateSpeechFile = (async (text: string): Promise<string> => {
   if ((generateSpeechFile as GenerateSpeechFileFunction).isGenerating) {
     logDebug("音声生成がすでに進行中です。リクエストを無視します。");
     await new Promise(resolve => setTimeout(resolve, 200));
-    if ((generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath) {
-      return (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath;
+    const lastPath = (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath;
+    if (lastPath) {
+      return lastPath;
     }
   }
 
   (generateSpeechFile as GenerateSpeechFileFunction).isGenerating = true;
-  (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath = null;
+  (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath = '';
 
   try {
     logDebug("音声生成開始", { textLength: text.length });
 
     // テキストが長すぎる場合は適切なサイズに切り詰める
-    const maxLength = 4000; // OpenAIのTTS APIの制限に基づく
-    const limitedText =
-      text.length > maxLength ? text.substring(0, maxLength) : text;
-    if (text.length > maxLength) {
-      logDebug("テキストが長すぎるため切り詰めました", {
-        originalLength: text.length,
-        limitedLength: limitedText.length,
-      });
-    }
+    const maxTextLength = 500;
+    const shortenedText = text.length > maxTextLength ? text.substring(0, maxTextLength) + '...' : text;
 
-    // 音声ファイルの保存ディレクトリの確認・作成
-    const audioDir = path.join(
-      path.dirname(path.dirname(__dirname)),
-      "public/audio"
-    );
+    // ファイル名の生成（同じテキストでも別のファイルになるようにタイムスタンプを追加）
+    const fileName = `speech_${Date.now()}.mp3`;
+    const filePath = path.join(process.cwd(), 'public', 'audio', fileName);
+    const relativePath = `/audio/${fileName}`;
+
+    // ディレクトリの存在確認
+    const audioDir = path.join(process.cwd(), 'public', 'audio');
     if (!fs.existsSync(audioDir)) {
       fs.mkdirSync(audioDir, { recursive: true });
     }
 
-    // 既存のmp3ファイルを全て削除
-    logDebug("既存の音声ファイルをクリアします");
-    const files = fs.readdirSync(audioDir);
-    let deletedCount = 0;
-    for (const file of files) {
-      if (file.endsWith('.mp3') && file !== '.gitkeep') {
-        fs.unlinkSync(path.join(audioDir, file));
-        deletedCount++;
-      }
-    }
-    logDebug(`${deletedCount}個の音声ファイルを削除しました`);
-    
-    // ファイルシステムの処理が確実に完了するのを待つ
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // ファイル名を生成（タイムスタンプを含む）
-    const timestamp = new Date().getTime();
-    const filename = `speech_${timestamp}.mp3`;
-    const outputPath = path.join(audioDir, filename);
-
-    logDebug("音声ファイル保存先:", { audioDir, outputPath });
-
-    // OpenAI Speech APIを使用して音声を生成
+    // OpenAIを使用して音声を生成
     const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: "alloy",
-      input: limitedText,
-      response_format: "mp3",
+      model: 'tts-1',
+      voice: 'alloy',
+      input: shortenedText
     });
 
-    // 応答をバッファに変換
+    // ファイルに保存
     const buffer = Buffer.from(await mp3.arrayBuffer());
+    fs.writeFileSync(filePath, buffer);
 
-    logDebug("音声データのバッファサイズ:", { size: buffer.length });
+    logDebug("音声ファイル生成完了", { filePath });
+    (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath = relativePath;
 
-    // ファイルに書き込み
-    fs.writeFileSync(outputPath, buffer);
-
-    // ファイルが正しく書き込まれたか確認
-    if (fs.existsSync(outputPath)) {
-      const stats = fs.statSync(outputPath);
-      logDebug("音声ファイル生成完了", {
-        filename,
-        path: outputPath,
-        size: stats.size,
-        exists: true,
-      });
-    } else {
-      logDebug("警告: ファイルが書き込まれましたが、確認できません", {
-        outputPath,
-      });
-    }
-
-    // 相対パスを返す
-    const audioPath = `/audio/${filename}`;
-    (generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath = audioPath;
-    return audioPath;
+    return relativePath;
   } catch (error) {
-    logDebug("音声生成エラー", { error });
-
-    // エラーの詳細情報を取得
-    let errorMessage = "不明なエラー";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-      logDebug("エラーメッセージ", {
-        message: error.message,
-        stack: error.stack,
-      });
-    }
-
-    throw new Error(`音声生成に失敗しました: ${errorMessage}`);
+    console.error("音声生成中にエラーが発生しました", error);
+    throw error;
   } finally {
-    // 処理完了後に進行中フラグをクリア
     (generateSpeechFile as GenerateSpeechFileFunction).isGenerating = false;
   }
 }) as GenerateSpeechFileFunction;
 
-// 関数にプロパティを追加
-generateSpeechFile.isGenerating = false;
-generateSpeechFile.lastGeneratedPath = null;
+// 初期化
+(generateSpeechFile as GenerateSpeechFileFunction).isGenerating = false;
+(generateSpeechFile as GenerateSpeechFileFunction).lastGeneratedPath = '';
 
 // リスニング問題を生成するAPI
 router.post("/generate", async (req: Request, res: Response) => {
@@ -265,7 +207,8 @@ router.post("/generate", async (req: Request, res: Response) => {
     });
     logDebug("OpenAI APIレスポンス受信", response.choices[0].message);
 
-    let generatedQuestion = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content || '{}';
+    let generatedQuestion = JSON.parse(content);
 
     // レスポンスの形式を検証
     if (
@@ -277,24 +220,18 @@ router.post("/generate", async (req: Request, res: Response) => {
         progress: 100,
         status: "エラー: 問題生成に失敗しました",
       });
-      return res
-        .status(500)
-        .json({ error: "生成された問題のフォーマットが不正です" });
+      return res.status(500).json({ error: "問題の生成に失敗しました" });
     }
 
-    // 問題数が4問ではない場合はエラーとする
+    // 問題数が4問でない場合は再生成を試みる
     if (generatedQuestion.questions.length !== 4) {
-      logDebug("問題数が4問ではありません", {
-        questionCount: generatedQuestion.questions.length
+      logDebug("問題数が4問ではありません。再生成を試みます", {
+        questionCount: generatedQuestion.questions.length,
       });
-      req.io.emit("progress", {
-        progress: 65,
-        status: "問題数が不足しています。再生成中...",
-      });
-      
-      // 再度OpenAIを呼び出して4問を生成
+
+      // 再生成を試みる
       const retryResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -347,7 +284,8 @@ router.post("/generate", async (req: Request, res: Response) => {
         temperature: 0.9,
       });
       
-      generatedQuestion = JSON.parse(retryResponse.choices[0].message.content);
+      const content = retryResponse.choices[0].message.content || '{}';
+      generatedQuestion = JSON.parse(content);
       
       // 再度問題数を確認
       if (!generatedQuestion.text || !Array.isArray(generatedQuestion.questions) || generatedQuestion.questions.length !== 4) {

@@ -112,7 +112,7 @@ router.get('/sample/:topicId', async (req: Request, res: Response) => {
     });
 
     // 生成された会話を取得
-    const conversation = response.choices[0].message.content.trim();
+    const conversation = response.choices[0].message.content?.trim() || '';
     logDebug('会話サンプル生成完了', { conversation });
 
     // クライアントに会話サンプルを返す
@@ -182,7 +182,7 @@ router.get('/random-topics', async (req: Request, res: Response) => {
     });
 
     // 生成されたJSONを解析
-    const rawContent = response.choices[0].message.content.trim();
+    const rawContent = response.choices[0].message.content?.trim() || '{}';
     let generatedTopics;
     
     try {

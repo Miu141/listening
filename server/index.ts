@@ -5,9 +5,9 @@ import { Server } from 'socket.io'
 import http from 'http'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import questionsRouter from './routes/questions'
-import transcriptRouter from './routes/transcript'
-import conversationsRouter from './routes/conversations'
+import questionsRouter from './routes/questions.js'
+import transcriptRouter from './routes/transcript.js'
+import conversationsRouter from './routes/conversations.js'
 
 dotenv.config()
 
