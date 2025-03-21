@@ -30,3 +30,10 @@ dist-ssr
 .env.test.local
 .env.production.local
 public/audio/*
+
+# Docker
+.docker/data
+docker-compose.override.yml
+
+# Railway
+.railway/output
